@@ -1,0 +1,44 @@
+# IMPORT DATA
+
+# airport
+
+LOAD CSV WITH HEADERS FROM "file:/airports.csv" as l 
+CREATE(airport:Airport{id:toInteger(l.AirportID), name:l.Name,city:l.City,
+	country:l.Country, IATA:l.IATA, latitude:toFloat(l.Latitude),
+	longitude:toFloat(l.Longitude), altitude:toFloat(l.Altitude), TimeZone:l.TZ});
+
+
+# airline
+
+LOAD CSV WITH HEADERS FROM "file:/airlines.csv" as l
+CREATE (airline:Airline{id:toInteger(l.AirlineID), name:l.Name,alias:l.Alias, IATA:l.IATA,
+	country:l.Country, active:l.Active});
+
+# indexes
+
+CREATE INDEX ON :Airport(id);
+CREATE INDEX ON :Airline(id);
+CREATE INDEX ON :Route(id);
+CREATE INDEX ON :Airport(country);
+CREATE INDEX ON :Airport(city);
+CREATE INDEX ON :Airport(IATA);
+CREATE INDEX ON :Route(name);
+
+# route
+
+LOAD CSV WITH HEADERS FROM "file:/routes.csv" as l 
+MERGE (airline:Airline{id:toInteger(l.AirlineID)})
+MERGE (source:Airport{id:toInteger(l.SourceAirportID)})
+MERGE (dest:Airport{id:toInteger(l.DestAirportID)})
+CREATE (route :Route{equipment :l.Equipment})
+CREATE (route) -[:from]-> (source)
+CREATE (route) -[:to]-> (dest)
+CREATE (route) -[:by]-> (airline)
+
+# relationship
+
+MATCH (FROM:Airport) <-[:from]-(r:Route)-[:to]-> (TO:Airport),
+	(r)-[:by]->(comp)
+WHERE FROM <> TO
+MERGE (from) -[:path{airline:comp.name}]-> (TO)
+
