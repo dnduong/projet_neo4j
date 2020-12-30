@@ -7,22 +7,11 @@ CREATE(airport:Airport{id:toInteger(l.AirportID), name:l.Name,city:l.City,
 	country:l.Country, IATA:l.IATA, latitude:toFloat(l.Latitude),
 	longitude:toFloat(l.Longitude), altitude:toFloat(l.Altitude), TimeZone:l.TZ});
 
-
 # airline
 
 LOAD CSV WITH HEADERS FROM "file:/airlines.csv" as l
 CREATE (airline:Airline{id:toInteger(l.AirlineID), name:l.Name,alias:l.Alias, IATA:l.IATA,
 	country:l.Country, active:l.Active});
-
-# indexes
-
-CREATE INDEX ON :Airport(id);
-CREATE INDEX ON :Airline(id);
-CREATE INDEX ON :Route(id);
-CREATE INDEX ON :Airport(country);
-CREATE INDEX ON :Airport(city);
-CREATE INDEX ON :Airport(IATA);
-CREATE INDEX ON :Route(name);
 
 # route
 
@@ -35,10 +24,82 @@ CREATE (route) -[:from]-> (source)
 CREATE (route) -[:to]-> (dest)
 CREATE (route) -[:by]-> (airline)
 
+# indexes
+
+CREATE INDEX ON :Airport(id);
+CREATE INDEX ON :Airline(id);
+CREATE INDEX ON :Route(id);
+CREATE INDEX ON :Airport(country);
+CREATE INDEX ON :Airport(city);
+CREATE INDEX ON :Airport(IATA);
+CREATE INDEX ON :Route(name);
+
 # relationship
 
 MATCH (FROM:Airport) <-[:from]-(r:Route)-[:to]-> (TO:Airport),
 	(r)-[:by]->(comp)
 WHERE FROM <> TO
-MERGE (from) -[:path{airline:comp.name}]-> (TO)
+MERGE (FROM) -[:path{airline:comp.name}]-> (TO)
 
+# Simple queries:
+
+# Names and IATA codes of all Canadian Airline companies 
+# only when the IATA code exists and when it is an active Airline
+
+MATCH (a:Airline{country:'Canada'})
+WHERE EXISTS(a.IATA) AND a.active = 'Y'
+RETURN a.name, a.IATA
+
+#Graph of all routes coming from a Canadian airport to French airport
+
+MATCH (CA:Airport{country:'Canada'}) <-[:from]- (r:Route) -[:to]-> (FR:Airport{country:'France'}) 
+RETURN CA, r, FR
+
+#Graph of routes which departure is Charles de Gaulle and arrival is Vietnam(CDG)
+MATCH (cdg:Airport{IATA:'CDG'}) <-[:from]-(r:Route)-[:to]-> (vn:Airport{country:'Vietnam'})
+RETURN cdg, r, vn
+
+#All airline companies with direct flight from CDG to VN
+MATCH (cdg:Airport{IATA:'CDG'}) <-[:from]-(r:Route)-[:to]-> (vn:Airport{country:'Vietnam'}),
+	(r) -[:by]-> (comp)
+RETURN DISTINCT comp.name
+
+# Complex queries:
+
+# Graph of paths delivered by ”Air Canada” between all Canadian airports
+
+MATCH (from:Airport{country:'Canada'}) -[:path{airline:'Air Canada'}]-> (to:Airport{country:'Canada'})
+RETURN from, to
+
+# The shortest path from Rio De Janeiro to Acapulco
+
+MATCH p=shortestpath( (FROM:Airport{city:'Rio De Janeiro'}) -[:path*]-> (TO:Airport{city:'Acapulco'}) )
+RETURN p
+
+
+
+# Hard queries:
+
+# All paths of length 2 from Milano only delivered by ”Air Italy” (without direct flights)
+
+MATCH p=(milan:Airport{city:'Milano'}) -[:path*2]-> (dest:Airport)
+WHERE ALL(path in relationships(p) WHERE path.airline='Air Italy')  AND NOT EXISTS((milan) --> (dest))
+RETURN p
+
+# All paths of length 2 from France to Vietnam only delivered by ”Korean Air" (without direct flights)
+
+MATCH p=(fr:Airport{country:'France'}) -[:path*2]-> (vn:Airport{country:'Vietnam'})
+WHERE ALL(path in relationships(p) WHERE path.airline='Korean Air') AND NOT EXISTS((fr) --> (vn))
+RETURN p
+
+# For those destinations, give per country the number of paths sorted decreasingly,
+
+MATCH p=(montreal:Airport{city:'Montreal'}) -[:path*2]-> (dest:Airport)
+WHERE ALL(path in relationships(p) WHERE path.airline='Air Canada')  AND NOT EXISTS((montreal) --> (dest))
+RETURN dest.country, COUNT(*) AS NB
+ORDER BY NB DESC
+# All paths of length 2 to 4 from Paris to Vietnam only delivered by ”Air France” (without direct flights), which stops at least once in United States
+MATCH p=(paris:Airport{city:'Paris'}) -[:path*2..4]-> (vn:Airport{country:'Vietnam'})
+WHERE ALL(path in relationships(p) WHERE path.airline='Air France')  AND NOT EXISTS((paris) --> (vn))
+ AND ANY(n in nodes(p) WHERE n.country='United States')
+RETURN p

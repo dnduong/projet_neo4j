@@ -1,0 +1,66 @@
+# IMPORT DATA
+
+# You need to change the path in \COPY command in order to import 
+
+# airport
+
+CREATE TABLE airport
+(
+	AirportID INT PRIMARY KEY NOT NULL,
+	Name VARCHAR,
+	City VARCHAR,
+	Country VARCHAR,
+	IATA VARCHAR,
+	ICAO VARCHAR,
+	Latitude FLOAT,
+	Longitude FLOAT,
+	Altitude VARCHAR,
+	Timezone VARCHAR,
+	DST VARCHAR,
+	TZ VARCHAR,
+	Type VARCHAR,
+	Source VARCHAR
+);
+
+\COPY airport FROM '/home/masked_penguin/win-ubuntu/projet_neo4j/data/airports.csv' DELIMITER ',' CSV HEADER;
+
+# airline
+
+CREATE TABLE airline
+(
+	AirlineID INT PRIMARY KEY NOT NULL,
+	Name VARCHAR,
+	Alias VARCHAR,
+	IATA VARCHAR,
+	ICAO VARCHAR,
+	Callsign VARCHAR,
+	Country VARCHAR,
+	Active BOOLEAN
+);
+
+\COPY airline FROM '/home/masked_penguin/win-ubuntu/projet_neo4j/data/airlines.csv' DELIMITER ',' CSV HEADER;
+
+# route
+
+CREATE TABLE route
+(
+	Airline VARCHAR,
+	AirlineID INT,
+	SourceAirport VARCHAR,
+	SourceAirportID INT,
+	DestAirport VARCHAR,
+	DestAirportID INT,
+	Codeshare VARCHAR,
+	Stops INT,
+	Equipment VARCHAR
+);
+
+\COPY route FROM '/home/masked_penguin/win-ubuntu/projet_neo4j/data/routes.csv' DELIMITER ',' CSV HEADER;
+
+
+# indexes
+CREATE INDEX idx_airport_id ON airport(airportid);
+CREATE INDEX idx_airport_country ON airport(country);
+CREATE INDEX idx_airport_city ON airport(city);
+CREATE INDEX idx_airport_iata ON airport(iata);
+CREATE INDEX idx_airline_id ON airline(airlineid);
