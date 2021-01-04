@@ -64,3 +64,39 @@ CREATE INDEX idx_airport_country ON airport(country);
 CREATE INDEX idx_airport_city ON airport(city);
 CREATE INDEX idx_airport_iata ON airport(iata);
 CREATE INDEX idx_airline_id ON airline(airlineid);
+CREATE INDEX idx_source_airport_id ON route(sourceairportid);
+CREATE INDEX idx_dest_airport_id ON route(destairportid);
+
+
+# Names and IATA codes of all Canadian Airline companies 
+# only when the IATA code exists and when it is an active Airline
+SELECT name,IATA
+FROM airline
+WHERE EXISTS(SELECT IATA FROM airline) AND active = 't' AND country = 'Canada';
+
+#Graph of all routes coming from a Canadian airport to French airport
+SELECT r.*
+FROM route AS r, airport AS a1, airport AS a2
+WHERE r.sourceairportid = a1.airportid AND a1.country = 'Canada'
+	AND r.destairportid = a2.airportid AND a2.country = 'France';
+
+# Graph of paths delivered by ”Air Canada” between all Canadian airports
+
+WITH RECURSIVE access(sourceairportid, destairportid) AS 
+( 
+	SELECT sourceairportid, destairportid 
+	FROM route AS r, airport AS a1, airport AS a2, airline AS al
+	WHERE r.sourceairportid = a1.airportid AND a1.country = 'Canada'
+	AND r.destairportid = a2.airportid AND a2.country = 'Canada'
+	AND r.airlineid = al.airlineid AND al.name = 'Air Canada'
+	UNION 
+	SELECT r.sourceairportid, a.destairportid
+	FROM route AS r, access AS a, airport AS a1, airport AS a2,airline AS al
+	WHERE r.destairportid = a.sourceairportid 
+	AND r.sourceairportid = a1.airportid AND a1.country = 'Canada'
+	AND r.destairportid = a2.airportid AND a2.country = 'Canada'
+	AND r.airlineid = al.airlineid AND al.name = 'Air Canada'
+)
+SELECT count(*) 
+FROM access 
+WHERE sourceairportid != destairportid;
