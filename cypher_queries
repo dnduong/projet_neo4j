@@ -1,0 +1,42 @@
+# Simple queries:
+
+# Names and IATA codes of all Canadian Airline companies 
+# only when the IATA code exists and when it is an active Airline
+
+MATCH (a:Airline{country:'Canada'})
+WHERE EXISTS(a.IATA) AND a.active = 'Y'
+RETURN a.name, a.IATA
+
+#Graph of all routes coming from a Canadian airport to French airport
+
+MATCH (CA:Airport{country:'Canada'}) <-[:from]- (r:Route) -[:to]-> (FR:Airport{country:'France'}) 
+RETURN CA, r, FR
+
+
+# Complex queries:
+
+# Graph of paths delivered by ”Air Canada” between all Canadian airports
+
+MATCH (from:Airport{country:'Canada'}) -[:path{airline:'Air 500'}]-> (to:Airport{country:'Canada'})
+RETURN from, to
+
+# The shortest path from Rio De Janeiro to Acapulco
+
+MATCH p=shortestpath( (FROM:Airport{city:'Rio De Janeiro'}) -[:path*]-> (TO:Airport{city:'Acapulco'}) )
+RETURN p
+
+
+# Hard queries:
+
+# All paths of length 2 from Milano only delivered by ”Air Italy” (without direct flights)
+
+MATCH p=(milan:Airport{city:'Milano'}) -[:path*2]-> (dest:Airport)
+WHERE ALL(path in relationships(p) WHERE path.airline='Air Italy')  AND NOT EXISTS((milan) --> (dest))
+RETURN p
+
+# For those destinations, give per country the number of paths sorted decreasingly,
+
+MATCH p=(montreal:Airport{city:'Montreal'}) -[:path*2]-> (dest:Airport)
+WHERE ALL(path in relationships(p) WHERE path.airline='Air 500')  AND NOT EXISTS((montreal) --> (dest))
+RETURN dest.country, COUNT(*) AS NB
+ORDER BY NB DESC
