@@ -74,14 +74,13 @@ SELECT name,IATA
 FROM airline
 WHERE EXISTS(SELECT IATA FROM airline) AND active = 't' AND country = 'Canada';
 
-#Graph of all routes coming from a Canadian airport to French airport
+#all routes coming from a Canadian airport to French airport
 SELECT r.*
 FROM route AS r, airport AS a1, airport AS a2
 WHERE r.sourceairportid = a1.airportid AND a1.country = 'Canada'
 	AND r.destairportid = a2.airportid AND a2.country = 'France';
 
-# Graph of paths delivered by ”Air Canada” between all Canadian airports
-
+# paths delivered by ”Air Canada” between all Canadian airports
 WITH RECURSIVE access(sourceairportid, destairportid) AS 
 ( 
 	SELECT sourceairportid, destairportid 
@@ -98,5 +97,4 @@ WITH RECURSIVE access(sourceairportid, destairportid) AS
 	AND r.airlineid = al.airlineid AND al.name = 'Air Canada'
 )
 SELECT count(*) 
-FROM access 
-WHERE sourceairportid != destairportid;
+FROM access;
